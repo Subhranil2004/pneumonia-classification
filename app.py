@@ -5,7 +5,6 @@ from PIL import Image, ImageOps
 import numpy as np
 from tensorflow.keras.preprocessing import image
 from tensorflow.keras.applications.vgg16 import preprocess_input
-import os, zipfile
 
 # Streamlit app code - MUST BE FIRST
 st.set_page_config(
@@ -13,8 +12,8 @@ st.set_page_config(
     layout="centered",
     initial_sidebar_state="expanded",
     menu_items={
-        # "Get Help": "https://github.com/Subhranil2004/digits-in-ink#live-demo",
-        # "Report a bug": "https://github.com/Subhranil2004/handwritten-digit-classification/issues",
+        "Get Help": "https://github.com/Subhranil2004/pneumonia-classification#live-demo",
+        "Report a bug": "https://github.com/Subhranil2004/pneumonia-classification/issues",
     },
 )
 
