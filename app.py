@@ -5,14 +5,32 @@ from PIL import Image, ImageOps
 import numpy as np
 from tensorflow.keras.preprocessing import image
 from tensorflow.keras.applications.vgg16 import preprocess_input
+import os, zipfile
 
-# import json
-# import requests
+# Streamlit app code - MUST BE FIRST
+st.set_page_config(
+    page_title="Pneumonia Prediction from Chest X-Ray images",
+    layout="centered",
+    initial_sidebar_state="expanded",
+    menu_items={
+        # "Get Help": "https://github.com/Subhranil2004/digits-in-ink#live-demo",
+        # "Report a bug": "https://github.com/Subhranil2004/handwritten-digit-classification/issues",
+    },
+)
 
-# from streamlit_lottie import st_lottie
 
 # Load the saved model
-model = tf.keras.models.load_model(r"../Model/vgg_model.keras", compile=False)
+@st.cache_resource
+def load_model():
+    try:
+        model = tf.keras.models.load_model(r"./Model/vgg_model.keras", compile=False)
+        return model
+    except Exception as e:
+        st.error(f"Error loading model: {str(e)}")
+        return None
+
+
+model = load_model()
 
 
 def contrast_stretching(image):
@@ -49,16 +67,16 @@ def preprocess_image(image_path):
 
 
 # Define a function for model inference
-# @tf.function
 def predict(image):
+    if model is None:
+        st.error("Model not loaded. Please check if the model file exists.")
+        return None
+
     # Open and preprocess the image
-    # img = Image.open(image)
     preprocessed_image = preprocess_image(image)
-    # st.image(preprocessed_image, width=500, caption="pre")
 
     # Convert image to NumPy array
     img_array = np.array(preprocessed_image)
-    # img_array = np.expand_dims(img_array, axis=-1)  # Add batch dimension
 
     # Make predictions using the loaded model
     prediction = model.predict(img_array)
@@ -66,22 +84,11 @@ def predict(image):
     return prediction
 
 
-# Streamlit app code
-st.set_page_config(
-    page_title="Pneumonia Prediction from Chest X-Ray images",
-    layout="centered",
-    initial_sidebar_state="expanded",
-    menu_items={
-        # "Get Help": "https://github.com/Subhranil2004/digits-in-ink#live-demo",
-        # "Report a bug": "https://github.com/Subhranil2004/handwritten-digit-classification/issues",
-    },
-)
-
 # Sidebar
 with st.sidebar:
     st.image(
-        "./images/image.jpg",
-        use_column_width=True,
+        "./Images/image.jpg",
+        use_container_width=True,
         output_format="JPEG",
     )
 
@@ -89,7 +96,7 @@ with st.sidebar:
 
 st.sidebar.title("Pneumonia Prediction from Chest X-Ray images")
 st.sidebar.write(
-    "The model is trained on the ***Pneumonia X-Ray Images dataset*** from **Kaggle** and uses Convolutional Neural Network with Data augmentation."  # It has an exceptional accuracy rate of 99.45% on MNIST test dataset."
+    "The model is trained on the ***Pneumonia X-Ray Images dataset*** from [**Kaggle**](https://www.kaggle.com/datasets/pcbreviglieri/pneumonia-xray-images) and uses Convolutional Neural Network with Data augmentation."
 )
 
 # st.sidebar.write(
@@ -137,27 +144,29 @@ if uploaded_file is not None:
         # max_index = round(result)
         if result > 0.5:
             output = ":red[PNEUMONIA  AFFECTED] ⚠️"
-            conf = result * 100
+            conf = (result - 0.5) * 2 * 100
         else:
             output = "NORMAL ✅"
-            conf = (1 - result) * 100
+            conf = (0.5 - result) * 2 * 100
 
         st.write(f"Prediction :  {output}  [Confidence: :green[{conf[0][0]:.2f} %] ]")
 
 
 expander = st.expander("Some sample X-ray images to try with...", expanded=True)
 expander.write("Just drag-and-drop your chosen image above ")
-expander.image(
-    [
-        "./images/viral2.jpeg",
-        "./images/bacterial1.jpg",
-        "./images/viral1.jpg",
-        "./images/IM-0028-0001.jpeg",
-        "./images/person101_bacteria_484.jpeg",
-        "./images/person3_virus_17.jpeg",
-    ],
-    width=200,
-)
+sample_images = [
+    "./Images/viral2.jpeg",
+    "./Images/bacterial1.jpg",
+    "./Images/viral1.jpg",
+    "./Images/IM-0028-0001.jpeg",
+    "./Images/person101_bacteria_484.jpeg",
+    "./Images/person3_virus_17.jpeg",
+]
+
+cols = expander.columns(3)
+for idx, img_path in enumerate(sample_images):
+    with cols[idx % 3]:
+        st.image(img_path, width=200)
 # expander.write(
 #     "All images might not give the desired result as the *1st* prediction due to low contrast. Check the probability scores in such cases."
 # )
@@ -175,6 +184,6 @@ st.markdown(
 )
 
 st.markdown(
-    f"""<div style="text-align: right"> Developed by Subhranil Nandy </div>""",
+    f"""<div style="text-align: right"> Developed with ❤️ by Subhranil Nandy </div>""",
     unsafe_allow_html=True,
 )
