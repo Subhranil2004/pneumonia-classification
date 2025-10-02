@@ -1,10 +1,20 @@
 import streamlit as st
 import tensorflow as tf
-import time
-from PIL import Image, ImageOps
+from PIL import Image
 import numpy as np
 from tensorflow.keras.preprocessing import image
 from tensorflow.keras.applications.vgg16 import preprocess_input
+import os
+
+# Set environment variables to reduce TensorFlow verbosity
+# os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"  # Suppress INFO and WARNING messages
+# os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"  # Disable oneDNN custom operations warnings
+
+# # Suppress TensorFlow warnings
+# import warnings
+
+# warnings.filterwarnings("ignore")
+# tf.get_logger().setLevel("ERROR")
 
 # Streamlit app code - MUST BE FIRST
 st.set_page_config(
@@ -22,30 +32,25 @@ st.set_page_config(
 @st.cache_resource
 def load_model():
     try:
-        model = tf.keras.models.load_model(r"./Model/vgg_model.keras", compile=False)
+        with st.spinner("Loading AI model..."):
+            model = tf.keras.models.load_model(
+                r"./Model/vgg_model.keras", compile=False
+            )
+        # st.success("Model loaded successfully!")
         return model
+    except FileNotFoundError:
+        st.error("❌ Model file not found.")
+        return None
     except Exception as e:
-        st.error(f"Error loading model: {str(e)}")
+        st.error(f"❌ Error loading model: {str(e)}")
         return None
 
 
 model = load_model()
 
 
-def contrast_stretching(image):
-    # Calculate the minimum and maximum pixel values in the image
-    min_val = np.min(image)
-    max_val = np.max(image)
-
-    # Apply contrast stretching
-    stretched_image = ((image - min_val) / (max_val - min_val)) * 255  # min-max
-    stretched_image = stretched_image.astype(np.uint8)  # Convert to uint8
-
-    return stretched_image
-
-
 def preprocess_image(image_path):
-
+    """Preprocess uploaded image for model prediction"""
     # Load the image with the target size
     img = image.load_img(image_path, target_size=(224, 224))
 
@@ -58,49 +63,49 @@ def preprocess_image(image_path):
     # Preprocess the image using VGG16 preprocess_input function
     preprocessed_img = preprocess_input(img_array)
 
-    # Resize image to match model input size
-    # resized_image = equalized_image.resize((224, 224))
-
-    # Apply contrast stretching
     return preprocessed_img
 
 
 # Define a function for model inference
 def predict(image):
     if model is None:
-        st.error("Model not loaded. Please check if the model file exists.")
+        st.error(
+            "❌ Model not loaded. Please check if the model file exists and reload the page."
+        )
         return None
 
-    # Open and preprocess the image
-    preprocessed_image = preprocess_image(image)
+    try:
+        with st.spinner("Analyzing X-ray image..."):
+            # Open and preprocess the image
+            preprocessed_image = preprocess_image(image)
 
-    # Convert image to NumPy array
-    img_array = np.array(preprocessed_image)
+            # Convert image to NumPy array
+            img_array = np.array(preprocessed_image)
 
-    # Make predictions using the loaded model
-    prediction = model.predict(img_array)
+            # Make predictions using the loaded model
+            prediction = model.predict(
+                img_array, verbose=0
+            )  # verbose=0 to suppress output
 
-    return prediction
+        return prediction
+    except Exception as e:
+        st.error(f"❌ Error during prediction: {str(e)}")
+        return None
 
 
 # Sidebar
 with st.sidebar:
     st.image(
         "./Images/image.jpg",
-        use_container_width=True,
+        width="stretch",
+        # use_container_width=True, # deprecated ^1.49.1
         output_format="JPEG",
     )
 
-# st.sidebar.subheader(":blue[[Please use a desktop for the best experience.]]")
-
-st.sidebar.title("Pneumonia Prediction from Chest X-Ray images")
+st.sidebar.title("🩺 Pneumonia Detection")
 st.sidebar.write(
-    "The model is trained on the ***Pneumonia X-Ray Images dataset*** from [**Kaggle**](https://www.kaggle.com/datasets/pcbreviglieri/pneumonia-xray-images) and uses Convolutional Neural Network with Data augmentation."
+    "This AI model is trained on the ***Pneumonia X-Ray Images dataset*** from [**Kaggle**](https://www.kaggle.com/datasets/pcbreviglieri/pneumonia-xray-images) and uses a Convolutional Neural Network with data augmentation."
 )
-
-# st.sidebar.write(
-#     "There is always a scope for improvement and I would appreciate suggestions and/or constructive criticisms."
-# )
 
 st.sidebar.link_button("GitHub", "https://github.com/Subhranil2004")
 
@@ -116,43 +121,45 @@ st.markdown(
 )
 
 # Main content
+st.title("🩺 Pneumonia Detection from Chest X-Rays")
+st.markdown("Upload a chest X-ray image to get an AI-powered diagnosis")
 
-st.title("Pneumonia Prediction")
-# st.subheader("from Chest X-Ray images")
 uploaded_file = st.file_uploader(
-    "Choose a chest X-Ray image...",
-    type=["jpg", "png", "bmp", "tiff"],
+    "📁 Choose a chest X-Ray image...",
+    type=["jpg", "jpeg", "png", "bmp", "tiff"],
+    help="Supported formats: JPG, PNG, BMP, TIFF",
 )
 
 if uploaded_file is not None:
     # Display the uploaded image with border
     st.image(
         uploaded_file,
-        caption="Uploaded Image",
+        caption="📸 Uploaded X-Ray Image",
         width=300,
         clamp=True,
-        # output_format="JPEG",
     )
 
     # Perform prediction
-    if st.button("Predict"):
+    if st.button("🔍 Predict", type="primary"):
         result = predict(uploaded_file)
-        st.write("Done!")
 
-        # Display the prediction result
-        # max_index = round(result)
-        if result > 0.5:
-            output = ":red[PNEUMONIA  AFFECTED] ⚠️"
-            conf = (result - 0.5) * 2 * 100
+        if result is not None:
+            # Display the prediction result
+            if result[0][0] > 0.5:
+                output = ":red[PNEUMONIA DETECTED] ⚠️"
+                conf = (result[0][0] - 0.5) * 2 * 100
+            else:
+                output = "NORMAL ✅"
+                conf = (0.5 - result[0][0]) * 2 * 100
+
+            st.success(f"**Prediction:** {output}")
+            st.info(f"**Confidence:** {conf:.2f}%")
         else:
-            output = "NORMAL ✅"
-            conf = (0.5 - result) * 2 * 100
-
-        st.write(f"Prediction :  {output}  [Confidence: :green[{conf[0][0]:.2f} %] ]")
+            st.error("Prediction failed. Please try again with a different image.")
 
 
-expander = st.expander("Some sample X-ray images to try with...", expanded=True)
-expander.write("Just drag-and-drop your chosen image above ")
+expander = st.expander("📋 Sample X-ray images to try", expanded=True)
+expander.write("👆 Just drag-and-drop your chosen image above")
 sample_images = [
     "./Images/viral2.jpeg",
     "./Images/bacterial1.jpg",
@@ -165,24 +172,18 @@ sample_images = [
 cols = expander.columns(3)
 for idx, img_path in enumerate(sample_images):
     with cols[idx % 3]:
-        st.image(img_path, width=200)
-# expander.write(
-#     "All images might not give the desired result as the *1st* prediction due to low contrast. Check the probability scores in such cases."
-# )
-# expander = st.expander("View Model Training and Validation Results")
-# expander.write("Confusion Matrix: ")
-# expander.image("./images/CNN_ConfusionMatrix.png", use_column_width=True)
-# expander.write("Graphs: ")
-# expander.image("./images/CNN_Graphs.png", use_column_width=True)
-
+        try:
+            st.image(img_path, width=200)
+        except Exception:
+            st.error(f"Image not found: {img_path}")
 # Footer
 st.write("\n\n\n")
 st.markdown("---")
 st.markdown(
-    f"""Drop in any discrepancies or give suggestions in `Report a bug` option within the `⋮` menu"""
+    "Drop in any discrepancies or give suggestions in `Report a bug` option within the `⋮` menu"
 )
 
 st.markdown(
-    f"""<div style="text-align: right"> Developed with ❤️ by Subhranil Nandy </div>""",
+    "<div style='text-align: right'> Developed with ❤️ by Subhranil Nandy </div>",
     unsafe_allow_html=True,
 )
