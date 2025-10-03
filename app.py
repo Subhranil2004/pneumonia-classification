@@ -162,9 +162,9 @@ expander = st.expander("📋 Sample X-ray images to try", expanded=True)
 expander.write("👆 Just drag-and-drop your chosen image above")
 sample_images = [
     "./Images/viral2.jpeg",
-    "./Images/bacterial1.jpg",
+    "./Images/IM-0001-0001.png",
     "./Images/viral1.jpg",
-    "./Images/IM-0028-0001.jpeg",
+    "./Images/normal1.jpg",
     "./Images/person101_bacteria_484.jpeg",
     "./Images/person3_virus_17.jpeg",
 ]
@@ -173,7 +173,11 @@ cols = expander.columns(3)
 for idx, img_path in enumerate(sample_images):
     with cols[idx % 3]:
         try:
-            st.image(img_path, width=200)
+            st.image(
+                img_path,
+                # width=200,
+                output_format="PNG",
+            )
         except Exception:
             st.error(f"Image not found: {img_path}")
 
