@@ -176,6 +176,11 @@ for idx, img_path in enumerate(sample_images):
             st.image(img_path, width=200)
         except Exception:
             st.error(f"Image not found: {img_path}")
+
+expander = st.expander("📊 Training Results", expanded=False)
+expander.image("./Images/confusion_matrix.png", caption="Confusion Matrix")
+expander.image("./Images/report.png", caption="Classification Report")
+
 # Footer
 st.write("\n\n\n")
 st.markdown("---")
