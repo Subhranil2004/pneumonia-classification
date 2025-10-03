@@ -71,9 +71,9 @@ This project implements different ways of pneumonia prediction from Chest X-Ray 
 | :----------------------------------------: |
 |         _Loss and Accuracy curves_         |
 
-| ![CM_VGG16](./Images/cm_vgg16.png) | ![Report_VGG16](./Images/report_vgg16.png) |
-| :--------------------------------: | :----------------------------------------: |
-|         _Confusion matrix_         |          _Classification report_           |
+| ![CM_VGG16](./Images/confusion_matrix_vgg16.png) | ![Report_VGG16](./Images/report_vgg16.png) |
+| :----------------------------------------------: | :----------------------------------------: |
+|                _Confusion matrix_                |          _Classification report_           |
 
 ## 💻 **Steps for running this project locally**
 
